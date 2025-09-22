@@ -7,7 +7,7 @@ A modern React-based compliance management platform designed for enterprise gove
 ### ✅ **Completed Features**
 
 #### **Authentication System**
-- ✅ AWS Cognito integration with custom user pool
+- ✅ AWS Cognito integration with custom user pool..
 - ✅ Role-based access control (Admin/User)
 - ✅ NEW_PASSWORD_REQUIRED flow handling
 - ✅ Beautiful animated login screen with glassmorphism effects
