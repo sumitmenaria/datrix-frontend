@@ -1,118 +1,118 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { FileText, Plus, Search, Filter, Edit, Eye, Download, Calendar } from "lucide-react";
-
-const policyCategories = [
-  { name: 'Security', count: 24, color: 'bg-blue-100 text-blue-800' },
-  { name: 'HR', count: 18, color: 'bg-green-100 text-green-800' },
-  { name: 'Finance', count: 15, color: 'bg-purple-100 text-purple-800' },
-  { name: 'Operations', count: 12, color: 'bg-orange-100 text-orange-800' },
-  { name: 'Legal', count: 8, color: 'bg-red-100 text-red-800' },
-];
-
-const policies = [
-  {
-    id: '1',
-    title: 'Information Security Policy',
-    category: 'Security',
-    version: '2.1',
-    status: 'Active',
-    owner: 'John Smith',
-    lastReview: '2024-01-15',
-    nextReview: '2024-07-15',
-    approver: 'CISO',
-    description: 'Comprehensive information security guidelines and procedures'
-  },
-  {
-    id: '2',
-    title: 'Remote Work Policy',
-    category: 'HR',
-    version: '1.3',
-    status: 'Active',
-    owner: 'Sarah Johnson',
-    lastReview: '2024-01-10',
-    nextReview: '2024-04-10',
-    approver: 'HR Director',
-    description: 'Guidelines for remote work arrangements and security requirements'
-  },
-  {
-    id: '3',
-    title: 'Data Retention Policy',
-    category: 'Legal',
-    version: '1.0',
-    status: 'Draft',
-    owner: 'Mike Davis',
-    lastReview: '2024-01-20',
-    nextReview: '2024-03-20',
-    approver: 'Legal Counsel',
-    description: 'Data retention schedules and disposal procedures'
-  },
-  {
-    id: '4',
-    title: 'Expense Reimbursement Policy',
-    category: 'Finance',
-    version: '3.2',
-    status: 'Active',
-    owner: 'Lisa Chen',
-    lastReview: '2024-01-05',
-    nextReview: '2024-06-05',
-    approver: 'CFO',
-    description: 'Employee expense reporting and reimbursement procedures'
-  },
-  {
-    id: '5',
-    title: 'Incident Response Policy',
-    category: 'Security',
-    version: '2.0',
-    status: 'Under Review',
-    owner: 'Alex Rodriguez',
-    lastReview: '2024-01-12',
-    nextReview: '2024-05-12',
-    approver: 'CISO',
-    description: 'Security incident response procedures and escalation matrix'
-  }
-];
-
-const recentActivities = [
-  {
-    action: 'Policy Updated',
-    policy: 'Information Security Policy',
-    user: 'John Smith',
-    timestamp: '2 hours ago'
-  },
-  {
-    action: 'Review Completed',
-    policy: 'Remote Work Policy',
-    user: 'Sarah Johnson',
-    timestamp: '1 day ago'
-  },
-  {
-    action: 'Policy Created',
-    policy: 'Data Retention Policy',
-    user: 'Mike Davis',
-    timestamp: '3 days ago'
-  }
-];
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
+import { FileText, Plus, Search, Filter, Edit, Eye, Download, Calendar, Bot, Loader2 } from "lucide-react";
+import { policyApi, Policy, OrganizationUser } from '../services/policyApi';
+import { API_CONFIG } from '../config/api';
 
 function getStatusColor(status: string) {
   switch (status) {
-    case 'Active':
+    case 'published':
       return 'bg-green-100 text-green-800';
-    case 'Draft':
+    case 'draft':
       return 'bg-gray-100 text-gray-800';
-    case 'Under Review':
+    case 'to_be_reviewed':
       return 'bg-yellow-100 text-yellow-800';
-    case 'Expired':
-      return 'bg-red-100 text-red-800';
+    case 'reviewed':
+      return 'bg-blue-100 text-blue-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
 }
 
+function getStatusLabel(status: string) {
+  switch (status) {
+    case 'published': return 'Published';
+    case 'draft': return 'Draft';
+    case 'to_be_reviewed': return 'To be Reviewed';
+    case 'reviewed': return 'Reviewed';
+    default: return status;
+  }
+}
+
 export function PolicyManagement() {
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [users, setUsers] = useState<OrganizationUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiForm, setAiForm] = useState({
+    framework: 'PDPL' as 'PDPL' | 'NCA_ECC' | 'SAMA',
+    policy_type: 'data_protection',
+    owner_id: '',
+    requirements: ''
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [policiesData, usersData] = await Promise.all([
+        policyApi.getPolicies(API_CONFIG.ORGANISATION_ID),
+        policyApi.getOrganizationUsers(API_CONFIG.ORGANISATION_ID)
+      ]);
+      setPolicies(policiesData.policies);
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateAI = async () => {
+    try {
+      setIsGenerating(true);
+      await policyApi.generatePolicy({
+        ...aiForm,
+        organization_id: API_CONFIG.ORGANISATION_ID
+      });
+      setShowAIDialog(false);
+      setAiForm({ framework: 'PDPL', policy_type: 'data_protection', owner_id: '', requirements: '' });
+      await loadData();
+    } catch (error) {
+      console.error('Failed to generate policy:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const filteredPolicies = policies.filter(policy =>
+    policy.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    policy.framework_type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const statusCounts = {
+    total: policies.length,
+    published: policies.filter(p => p.status === 'published').length,
+    to_be_reviewed: policies.filter(p => p.status === 'to_be_reviewed').length,
+    draft: policies.filter(p => p.status === 'draft').length
+  };
+
+  const frameworkCounts = {
+    PDPL: policies.filter(p => p.framework_type === 'PDPL').length,
+    NCA_ECC: policies.filter(p => p.framework_type === 'NCA_ECC').length,
+    SAMA: policies.filter(p => p.framework_type === 'SAMA').length
+  };
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -127,10 +127,78 @@ export function PolicyManagement() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Policy
-          </Button>
+          <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Bot className="h-4 w-4 mr-2" />
+                Generate AI Policy
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Generate AI Policy</DialogTitle>
+                <DialogDescription>
+                  Use AI to generate a comprehensive policy document
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="framework">Framework</Label>
+                  <Select value={aiForm.framework} onValueChange={(value: any) => setAiForm({...aiForm, framework: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PDPL">PDPL</SelectItem>
+                      <SelectItem value="NCA_ECC">NCA-ECC</SelectItem>
+                      <SelectItem value="SAMA">SAMA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="policy_type">Policy Type</Label>
+                  <Input
+                    value={aiForm.policy_type}
+                    onChange={(e) => setAiForm({...aiForm, policy_type: e.target.value})}
+                    placeholder="e.g., data_protection, access_control"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="owner">Owner</Label>
+                  <Select value={aiForm.owner_id} onValueChange={(value) => setAiForm({...aiForm, owner_id: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.email}>
+                          {user.name} ({user.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="requirements">Requirements</Label>
+                  <Textarea
+                    value={aiForm.requirements}
+                    onChange={(e) => setAiForm({...aiForm, requirements: e.target.value})}
+                    placeholder="Describe specific requirements for this policy..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowAIDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleGenerateAI} disabled={isGenerating}>
+                  {isGenerating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Generate Policy
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -141,56 +209,68 @@ export function PolicyManagement() {
             <CardTitle>Total Policies</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-muted-foreground">Across all categories</p>
+            <div className="text-2xl font-bold">{statusCounts.total}</div>
+            <p className="text-muted-foreground">Across all frameworks</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Active</CardTitle>
+            <CardTitle>Published</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">142</div>
-            <p className="text-muted-foreground">91% of total</p>
+            <div className="text-2xl font-bold text-green-600">{statusCounts.published}</div>
+            <p className="text-muted-foreground">Active policies</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Under Review</CardTitle>
+            <CardTitle>To be Reviewed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">12</div>
-            <p className="text-muted-foreground">Pending approval</p>
+            <div className="text-2xl font-bold text-yellow-600">{statusCounts.to_be_reviewed}</div>
+            <p className="text-muted-foreground">Pending review</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Due for Review</CardTitle>
+            <CardTitle>Draft</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">8</div>
-            <p className="text-muted-foreground">Next 30 days</p>
+            <div className="text-2xl font-bold text-gray-600">{statusCounts.draft}</div>
+            <p className="text-muted-foreground">In development</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Categories */}
+      {/* Framework Categories */}
       <Card>
         <CardHeader>
-          <CardTitle>Policy Categories</CardTitle>
-          <CardDescription>Policies organized by functional area</CardDescription>
+          <CardTitle>Policy Frameworks</CardTitle>
+          <CardDescription>Policies organized by compliance framework</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {policyCategories.map((category) => (
-              <div key={category.name} className="text-center">
-                <Badge className={`${category.color} px-3 py-1 mb-2`}>
-                  {category.name}
-                </Badge>
-                <div className="text-2xl font-bold">{category.count}</div>
-                <p className="text-sm text-muted-foreground">policies</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <Badge className="bg-blue-100 text-blue-800 px-3 py-1 mb-2">
+                PDPL
+              </Badge>
+              <div className="text-2xl font-bold">{frameworkCounts.PDPL}</div>
+              <p className="text-sm text-muted-foreground">Personal Data Protection</p>
+            </div>
+            <div className="text-center">
+              <Badge className="bg-green-100 text-green-800 px-3 py-1 mb-2">
+                NCA-ECC
+              </Badge>
+              <div className="text-2xl font-bold">{frameworkCounts.NCA_ECC}</div>
+              <p className="text-sm text-muted-foreground">Cybersecurity Controls</p>
+            </div>
+            <div className="text-center">
+              <Badge className="bg-purple-100 text-purple-800 px-3 py-1 mb-2">
+                SAMA
+              </Badge>
+              <div className="text-2xl font-bold">{frameworkCounts.SAMA}</div>
+              <p className="text-sm text-muted-foreground">Financial Authority</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -206,7 +286,12 @@ export function PolicyManagement() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input placeholder="Search policies..." className="pl-10" />
+                <Input 
+                  placeholder="Search policies..." 
+                  className="pl-10" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -215,37 +300,37 @@ export function PolicyManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Policy</TableHead>
-                <TableHead>Category</TableHead>
+                <TableHead>Framework</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead>Next Review</TableHead>
+                <TableHead>Renewal Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {policies.map((policy) => (
-                <TableRow key={policy.id}>
+              {filteredPolicies.map((policy) => (
+                <TableRow key={policy.policy_id}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{policy.title}</div>
-                      <div className="text-sm text-muted-foreground">{policy.description}</div>
+                      <div className="text-sm text-muted-foreground">{policy.policy_type}</div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{policy.category}</Badge>
+                    <Badge variant="outline">{policy.framework_type}</Badge>
                   </TableCell>
                   <TableCell>{policy.version}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(policy.status)}>
-                      {policy.status}
+                      {getStatusLabel(policy.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{policy.owner}</TableCell>
+                  <TableCell>{policy.owner_name || policy.owner_id}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {policy.nextReview}
+                      {new Date(policy.renewal_date).toLocaleDateString()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -265,29 +350,6 @@ export function PolicyManagement() {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activities */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activities</CardTitle>
-          <CardDescription>Latest policy management activities</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-center space-x-3">
-                <FileText className="h-4 w-4 text-blue-600" />
-                <div className="flex-1">
-                  <p className="font-medium">{activity.action}: {activity.policy}</p>
-                  <p className="text-sm text-muted-foreground">
-                    by {activity.user} • {activity.timestamp}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
     </div>
