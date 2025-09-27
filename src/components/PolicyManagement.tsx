@@ -44,6 +44,12 @@ export function PolicyManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
+  const [filters, setFilters] = useState({
+    framework: 'all',
+    status: 'all',
+    owner: 'all'
+  });
   const [aiForm, setAiForm] = useState({
     framework: 'PDPL' as 'PDPL' | 'NCA_ECC' | 'SAMA',
     policy_type: 'data_protection',
@@ -88,10 +94,24 @@ export function PolicyManagement() {
     }
   };
 
-  const filteredPolicies = policies.filter(policy =>
-    policy.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    policy.framework_type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPolicies = policies.filter(policy => {
+    const matchesSearch = policy.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      policy.framework_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      policy.policy_type.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFramework = filters.framework === 'all' || policy.framework_type === filters.framework;
+    const matchesStatus = filters.status === 'all' || policy.status === filters.status;
+    const matchesOwner = filters.owner === 'all' || policy.owner_id === filters.owner;
+    
+    return matchesSearch && matchesFramework && matchesStatus && matchesOwner;
+  });
+
+  const clearFilters = () => {
+    setFilters({ framework: 'all', status: 'all', owner: 'all' });
+    setSearchTerm('');
+  };
+
+  const activeFilterCount = Object.values(filters).filter(value => value !== 'all').length;
 
   const statusCounts = {
     total: policies.length,
@@ -123,10 +143,82 @@ export function PolicyManagement() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
+          <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="relative">
+                <Filter className="h-4 w-4 mr-2" />
+                Filter
+                {activeFilterCount > 0 && (
+                  <Badge className="ml-2 h-5 w-5 p-0 text-xs">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Filter Policies</DialogTitle>
+                <DialogDescription>
+                  Filter policies by framework, status, and owner
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="framework-filter">Framework</Label>
+                  <Select value={filters.framework} onValueChange={(value) => setFilters({...filters, framework: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Frameworks</SelectItem>
+                      <SelectItem value="PDPL">PDPL</SelectItem>
+                      <SelectItem value="NCA_ECC">NCA-ECC</SelectItem>
+                      <SelectItem value="SAMA">SAMA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="status-filter">Status</Label>
+                  <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="to_be_reviewed">To be Reviewed</SelectItem>
+                      <SelectItem value="reviewed">Reviewed</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="owner-filter">Owner</Label>
+                  <Select value={filters.owner} onValueChange={(value) => setFilters({...filters, owner: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Owners</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.email}>
+                          {user.name} ({user.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={clearFilters}>
+                  Clear All
+                </Button>
+                <Button onClick={() => setShowFilterDialog(false)}>
+                  Apply Filters
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
             <DialogTrigger asChild>
               <Button>
@@ -287,13 +379,62 @@ export function PolicyManagement() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input 
-                  placeholder="Search policies..." 
+                  placeholder="Search policies by title, framework, or type..." 
                   className="pl-10" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
+            {(activeFilterCount > 0 || searchTerm) && (
+              <Button variant="outline" onClick={clearFilters}>
+                Clear ({activeFilterCount + (searchTerm ? 1 : 0)})
+              </Button>
+            )}
+          </div>
+          
+          {/* Active Filters Display */}
+          {activeFilterCount > 0 && (
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {filters.framework !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  Framework: {filters.framework}
+                  <button 
+                    onClick={() => setFilters({...filters, framework: 'all'})}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              )}
+              {filters.status !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  Status: {getStatusLabel(filters.status)}
+                  <button 
+                    onClick={() => setFilters({...filters, status: 'all'})}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              )}
+              {filters.owner !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  Owner: {users.find(u => u.email === filters.owner)?.name || filters.owner}
+                  <button 
+                    onClick={() => setFilters({...filters, owner: 'all'})}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              )}
+            </div>
+          )}
+          
+          {/* Results Count */}
+          <div className="mb-4 text-sm text-muted-foreground">
+            Showing {filteredPolicies.length} of {policies.length} policies
           </div>
 
           <Table>
