@@ -142,83 +142,97 @@ export function PolicyManagement() {
             Create, manage, and track organizational policies
           </p>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="relative">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-                {activeFilterCount > 0 && (
-                  <Badge className="ml-2 h-5 w-5 p-0 text-xs">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Filter Policies</DialogTitle>
-                <DialogDescription>
-                  Filter policies by framework, status, and owner
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="framework-filter">Framework</Label>
-                  <Select value={filters.framework} onValueChange={(value) => setFilters({...filters, framework: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Frameworks</SelectItem>
-                      <SelectItem value="PDPL">PDPL</SelectItem>
-                      <SelectItem value="NCA_ECC">NCA-ECC</SelectItem>
-                      <SelectItem value="SAMA">SAMA</SelectItem>
-                    </SelectContent>
-                  </Select>
+        <div className="flex gap-2 relative">
+          <Button 
+            variant="outline" 
+            className="relative"
+            onClick={() => setShowFilterDialog(!showFilterDialog)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filter
+            {activeFilterCount > 0 && (
+              <Badge className="ml-2 h-5 w-5 p-0 text-xs">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </Button>
+          
+          {/* Filter Dropdown */}
+          {showFilterDialog && (
+            <Card className="absolute top-12 right-0 z-[100] w-80 p-4 shadow-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-medium">Filter Policies</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setShowFilterDialog(false)}
+                  >
+                    ×
+                  </Button>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="status-filter">Status</Label>
-                  <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="to_be_reviewed">To be Reviewed</SelectItem>
-                      <SelectItem value="reviewed">Reviewed</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                    </SelectContent>
-                  </Select>
+                
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">Framework</Label>
+                    <Select value={filters.framework} onValueChange={(value) => setFilters({...filters, framework: value})}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Frameworks</SelectItem>
+                        <SelectItem value="PDPL">PDPL</SelectItem>
+                        <SelectItem value="NCA_ECC">NCA-ECC</SelectItem>
+                        <SelectItem value="SAMA">SAMA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Status</Label>
+                    <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="to_be_reviewed">To be Reviewed</SelectItem>
+                        <SelectItem value="reviewed">Reviewed</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Owner</Label>
+                    <Select value={filters.owner} onValueChange={(value) => setFilters({...filters, owner: value})}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Owners</SelectItem>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.email}>
+                            {user.name || user.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="owner-filter">Owner</Label>
-                  <Select value={filters.owner} onValueChange={(value) => setFilters({...filters, owner: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Owners</SelectItem>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.email}>
-                          {user.name} ({user.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear All
+                  </Button>
+                  <Button size="sm" onClick={() => setShowFilterDialog(false)}>
+                    Apply
+                  </Button>
                 </div>
               </div>
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={clearFilters}>
-                  Clear All
-                </Button>
-                <Button onClick={() => setShowFilterDialog(false)}>
-                  Apply Filters
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+            </Card>
+          )}
           <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
             <DialogTrigger asChild>
               <Button>
@@ -493,6 +507,8 @@ export function PolicyManagement() {
           </Table>
         </CardContent>
       </Card>
+
+
     </div>
   );
 }
